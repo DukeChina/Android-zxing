@@ -24,6 +24,7 @@ import com.google.zxing.common.HybridBinarizer;
 public class BitmapDecoder {
 
     MultiFormatReader multiFormatReader;
+    static Vector<BarcodeFormat> decodeFormats;
 
     public BitmapDecoder() {
 
@@ -32,10 +33,10 @@ public class BitmapDecoder {
         // 解码的参数
         Hashtable<DecodeHintType, Object> hints = new Hashtable<DecodeHintType, Object>(2);
         // 可以解析的编码类型
-        Vector<BarcodeFormat> decodeFormats = new Vector<BarcodeFormat>();
+
         if (decodeFormats == null || decodeFormats.isEmpty()) {
             decodeFormats = new Vector<BarcodeFormat>();
-            decodeFormats.addAll(EnumSet.of(BarcodeFormat.QR_CODE));
+            decodeFormats.add(BarcodeFormat.QR_CODE);
         }
         hints.put(DecodeHintType.POSSIBLE_FORMATS, decodeFormats);
 
