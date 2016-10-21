@@ -1,20 +1,4 @@
-/*
- * Copyright (C) 2008 ZXing authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package com.duke.zxing.client.android.decode;
+package com.duke.zxing.client.android.widget;
 
 import java.util.Collection;
 import java.util.EnumMap;
@@ -26,29 +10,27 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.duke.zxing.client.android.CaptureActivity;
+import com.duke.zxing.client.android.decode.DecodeFormatManager;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.DecodeHintType;
 
 /**
- * This thread does all the heavy lifting of decoding the images.
- *
- * @author dswitkin@google.com (Daniel Switkin)
+ * Created by Duke on 2016/10/21.
  */
-public final class DecodeThread extends Thread {
+
+public class ScanViewThread extends Thread {
 
     public static final String BARCODE_BITMAP = "barcode_bitmap";
     public static final String BARCODE_SCALED_FACTOR = "barcode_scaled_factor";
-
-    private final CaptureActivity activity;
     private final Map<DecodeHintType, Object> hints;
     private final CountDownLatch handlerInitLatch;
     private Handler handler;
+    private ScanManager mScanManager;
 
-    public DecodeThread(CaptureActivity activity, Collection<BarcodeFormat> decodeFormats,
-        Map<DecodeHintType, ?> baseHints, String characterSet) {
+    public ScanViewThread(Collection<BarcodeFormat> decodeFormats, Map<DecodeHintType, ?> baseHints,
+        String characterSet, ScanManager scanManager) {
 
-        this.activity = activity;
+        mScanManager = scanManager;
         handlerInitLatch = new CountDownLatch(1);
 
         hints = new EnumMap<>(DecodeHintType.class);
@@ -81,9 +63,8 @@ public final class DecodeThread extends Thread {
     @Override
     public void run() {
         Looper.prepare();
-        handler = new DecodeHandler(activity, hints);
+        handler = new ScanViewDecodeHandler(hints, mScanManager);
         handlerInitLatch.countDown();
         Looper.loop();
     }
-
 }

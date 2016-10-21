@@ -21,19 +21,12 @@ import java.io.IOException;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.res.AssetFileDescriptor;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Vibrator;
-import android.preference.PreferenceManager;
 import android.util.Log;
 
-import com.duke.zxing.client.android.CaptureActivity;
-
-/**
- * Manages beeps and vibrations for {@link CaptureActivity}.
- */
 public final class BeepManager implements MediaPlayer.OnErrorListener, Closeable {
 
     private static final String TAG = BeepManager.class.getSimpleName();
@@ -52,7 +45,7 @@ public final class BeepManager implements MediaPlayer.OnErrorListener, Closeable
         updatePrefs();
     }
 
-    private static boolean shouldBeep(SharedPreferences prefs, Context activity) {
+    private static boolean shouldBeep(Context activity) {
         boolean shouldPlayBeep = true;// prefs.getBoolean(PreferencesActivity.KEY_PLAY_BEEP, true);
         if (shouldPlayBeep) {
             // See if sound settings overrides this
@@ -65,8 +58,7 @@ public final class BeepManager implements MediaPlayer.OnErrorListener, Closeable
     }
 
     public synchronized void updatePrefs() {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(activity);
-        playBeep = shouldBeep(prefs, activity);
+        playBeep = shouldBeep(activity);
         vibrate = true;
         if (playBeep && mediaPlayer == null) {
             // The volume on STREAM_SYSTEM is not adjustable, and users found it too loud,
@@ -89,7 +81,8 @@ public final class BeepManager implements MediaPlayer.OnErrorListener, Closeable
     private MediaPlayer buildMediaPlayer(Context activity) {
         MediaPlayer mediaPlayer = new MediaPlayer();
         try {
-            AssetFileDescriptor file = activity.getResources().openRawResourceFd(com.duke.zxing.client.android.R.raw.beep);
+            AssetFileDescriptor file =
+                activity.getResources().openRawResourceFd(com.duke.zxing.client.android.R.raw.beep);
             try {
                 mediaPlayer.setDataSource(file.getFileDescriptor(), file.getStartOffset(), file.getLength());
             } finally {

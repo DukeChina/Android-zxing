@@ -1,20 +1,4 @@
-/*
- * Copyright (C) 2010 ZXing authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package com.duke.zxing.client.android.decode;
+package com.duke.zxing.client.android.widget;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
@@ -26,7 +10,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
-import com.duke.zxing.client.android.CaptureActivity;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.DecodeHintType;
 import com.google.zxing.MultiFormatReader;
@@ -35,18 +18,21 @@ import com.google.zxing.ReaderException;
 import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
 
-final class DecodeHandler extends Handler {
+/**
+ * Created by Duke on 2016/10/21.
+ */
 
-    private static final String TAG = DecodeHandler.class.getSimpleName();
+public class ScanViewDecodeHandler extends Handler {
 
-    private final CaptureActivity activity;
+    private static final String TAG = ScanViewDecodeHandler.class.getSimpleName();
     private final MultiFormatReader multiFormatReader;
     private boolean running = true;
+    private ScanManager mScanManager;
 
-    DecodeHandler(CaptureActivity activity, Map<DecodeHintType, Object> hints) {
+    ScanViewDecodeHandler(Map<DecodeHintType, Object> hints, ScanManager scanManager) {
         multiFormatReader = new MultiFormatReader();
         multiFormatReader.setHints(hints);
-        this.activity = activity;
+        this.mScanManager = scanManager;
     }
 
     private static void bundleThumbnail(PlanarYUVLuminanceSource source, Bundle bundle) {
@@ -56,8 +42,8 @@ final class DecodeHandler extends Handler {
         Bitmap bitmap = Bitmap.createBitmap(pixels, 0, width, width, height, Bitmap.Config.ARGB_8888);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 50, out);
-        bundle.putByteArray(DecodeThread.BARCODE_BITMAP, out.toByteArray());
-        bundle.putFloat(DecodeThread.BARCODE_SCALED_FACTOR, (float) width / source.getWidth());
+        bundle.putByteArray(ScanViewThread.BARCODE_BITMAP, out.toByteArray());
+        bundle.putFloat(ScanViewThread.BARCODE_SCALED_FACTOR, (float) width / source.getWidth());
     }
 
     @Override
@@ -96,7 +82,7 @@ final class DecodeHandler extends Handler {
         data = rotatedData;
         long start = System.currentTimeMillis();
         Result rawResult = null;
-        PlanarYUVLuminanceSource source = activity.getCameraManager().buildLuminanceSource(data, width, height);
+        PlanarYUVLuminanceSource source = mScanManager.getCameraManager().buildLuminanceSource(data, width, height);
         if (source != null) {
             BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
             try {
@@ -108,7 +94,7 @@ final class DecodeHandler extends Handler {
             }
         }
 
-        Handler handler = activity.getHandler();
+        Handler handler = mScanManager.getHandler();
         if (rawResult != null) {
             // Don't log the barcode contents for security.
             long end = System.currentTimeMillis();
@@ -128,5 +114,4 @@ final class DecodeHandler extends Handler {
             }
         }
     }
-
 }

@@ -26,10 +26,9 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.SurfaceHolder;
 
-import com.duke.zxing.client.android.CaptureActivity;
+import com.duke.zxing.client.android.camera.open.OpenCamera;
 import com.duke.zxing.client.android.camera.open.OpenCameraInterface;
 import com.google.zxing.PlanarYUVLuminanceSource;
-import com.duke.zxing.client.android.camera.open.OpenCamera;
 
 /**
  * This object wraps the Camera service object and expects to be the only one talking to it. The
@@ -180,7 +179,7 @@ public final class CameraManager {
     }
 
     /**
-     * Convenience method for {@link CaptureActivity}
+     
      *
      * @param newSetting if {@code true}, light should be turned on if currently off. And vice versa.
      */
@@ -241,6 +240,28 @@ public final class CameraManager {
 
             int leftOffset = (screenResolution.x - width) / 2;
             int topOffset = (screenResolution.y - height) / 2;
+            framingRect = new Rect(leftOffset, topOffset, leftOffset + width, topOffset + height);
+            Log.d(TAG, "Calculated framing rect: " + framingRect);
+        }
+        return framingRect;
+    }
+
+    public synchronized Rect getFramingRect(Point layoutResolution) {
+        if (framingRect == null) {
+            if (camera == null) {
+                return null;
+            }
+            // Point screenResolution = configManager.getScreenResolution();
+            if (layoutResolution == null) {
+                // Called early, before init even finished
+                return null;
+            }
+
+            int width = findDesiredDimensionInRange(layoutResolution.x, MIN_FRAME_WIDTH, MAX_FRAME_WIDTH);
+            int height = findDesiredDimensionInRange(layoutResolution.y, MIN_FRAME_HEIGHT, MAX_FRAME_HEIGHT);
+
+            int leftOffset = (layoutResolution.x - width) / 2;
+            int topOffset = (layoutResolution.y - height) / 2;
             framingRect = new Rect(leftOffset, topOffset, leftOffset + width, topOffset + height);
             Log.d(TAG, "Calculated framing rect: " + framingRect);
         }

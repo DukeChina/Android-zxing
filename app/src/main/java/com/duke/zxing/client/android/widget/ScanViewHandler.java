@@ -1,63 +1,39 @@
-/*
- * Copyright (C) 2008 ZXing authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package com.duke.zxing.client.android;
+package com.duke.zxing.client.android.widget;
 
 import java.util.Collection;
 import java.util.Map;
 
-import android.app.Activity;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-
-import com.duke.zxing.client.android.camera.CameraManager;
+import com.duke.zxing.client.android.R;
 import com.duke.zxing.client.android.decode.BitmapDecoder;
-import com.duke.zxing.client.android.decode.DecodeThread;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.DecodeHintType;
 import com.google.zxing.Result;
 
 /**
- * This class handles all the messaging which comprises the state machine for capture.
- *
- * @author dswitkin@google.com (Daniel Switkin)
+ * Created by Duke on 2016/10/21.
  */
-public final class CaptureActivityHandler extends Handler {
 
-    private static final String TAG = CaptureActivityHandler.class.getSimpleName();
+public class ScanViewHandler extends Handler {
 
-    private final CaptureActivity activity;
-    private final DecodeThread decodeThread;
-    private final CameraManager cameraManager;
-    private State state;
+    private static final String TAG = ScanViewHandler.class.getSimpleName();
+    private final ScanViewThread decodeThread;
+    private final ScanManager scanManager;
+    private ScanViewHandler.State state;
 
-    CaptureActivityHandler(CaptureActivity activity, Collection<BarcodeFormat> decodeFormats,
-        Map<DecodeHintType, ?> baseHints, String characterSet, CameraManager cameraManager) {
-        this.activity = activity;
-        decodeThread = new DecodeThread(activity, decodeFormats, baseHints, characterSet);
+    public ScanViewHandler(Collection<BarcodeFormat> decodeFormats, Map<DecodeHintType, ?> baseHints,
+        String characterSet, ScanManager scanManager) {
+        decodeThread = new ScanViewThread(decodeFormats, baseHints, characterSet, scanManager);
         decodeThread.start();
-        state = State.SUCCESS;
+        state = ScanViewHandler.State.SUCCESS;
 
         // Start ourselves capturing previews and decoding.
-        this.cameraManager = cameraManager;
-        cameraManager.startPreview();
+        this.scanManager = scanManager;
+        scanManager.getCameraManager().startPreview();
         restartPreviewAndDecode();
     }
 
@@ -68,46 +44,42 @@ public final class CaptureActivityHandler extends Handler {
                 restartPreviewAndDecode();
                 break;
             case R.id.decode_succeeded:
-                state = State.SUCCESS;
+                state = ScanViewHandler.State.SUCCESS;
                 Bundle bundle = message.getData();
                 Bitmap barcode = null;
                 float scaleFactor = 1.0f;
                 if (bundle != null) {
-                    byte[] compressedBitmap = bundle.getByteArray(DecodeThread.BARCODE_BITMAP);
+                    byte[] compressedBitmap = bundle.getByteArray(ScanViewThread.BARCODE_BITMAP);
                     if (compressedBitmap != null) {
                         barcode = BitmapFactory.decodeByteArray(compressedBitmap, 0, compressedBitmap.length, null);
                         // Mutable copy:
                         barcode = barcode.copy(Bitmap.Config.ARGB_8888, true);
                     }
-                    scaleFactor = bundle.getFloat(DecodeThread.BARCODE_SCALED_FACTOR);
+                    scaleFactor = bundle.getFloat(ScanViewThread.BARCODE_SCALED_FACTOR);
                 }
-                activity.handleDecode((Result) message.obj, barcode, scaleFactor);
+                scanManager.handleDecode((Result) message.obj, barcode, scaleFactor);
                 break;
             case R.id.decode_failed:
                 // We're decoding as fast as possible, so when one decode fails, start another.
-                state = State.PREVIEW;
-                cameraManager.requestPreviewFrame(decodeThread.getHandler(), R.id.decode);
-                break;
-            case R.id.return_scan_result:
-                activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
-                activity.finish();
+                state = ScanViewHandler.State.PREVIEW;
+                scanManager.getCameraManager().requestPreviewFrame(decodeThread.getHandler(), R.id.decode);
                 break;
             case R.id.launch_product_query:
                 Bundle bundles = message.getData();
                 if (bundles != null) {
-                    byte[] compressedBitmap = bundles.getByteArray(CaptureActivity.KEY_BITMAP);
+                    byte[] compressedBitmap = bundles.getByteArray(ScanView.KEY_BITMAP);
                     if (compressedBitmap != null) {
                         barcode = BitmapFactory.decodeByteArray(compressedBitmap, 0, compressedBitmap.length, null);
 
                         Result rawResult = null;
                         rawResult = new BitmapDecoder().getRawResult(barcode);
-                        Handler handler = activity.getHandler();
+                        Handler handler = scanManager.getHandler();
                         if (rawResult != null) {
                             if (handler != null) {
                                 Message message1 = Message.obtain(handler, R.id.decode_succeeded, rawResult);
                                 Bundle bundle1 = new Bundle();
-                                bundle1.putByteArray(DecodeThread.BARCODE_BITMAP, compressedBitmap);
-                                bundle1.putFloat(DecodeThread.BARCODE_SCALED_FACTOR, 1);
+                                bundle1.putByteArray(ScanViewThread.BARCODE_BITMAP, compressedBitmap);
+                                bundle1.putFloat(ScanViewThread.BARCODE_SCALED_FACTOR, 1);
                                 message1.setData(bundle1);
                                 message1.sendToTarget();
                             }
@@ -124,8 +96,8 @@ public final class CaptureActivityHandler extends Handler {
     }
 
     public void quitSynchronously() {
-        state = State.DONE;
-        cameraManager.stopPreview();
+        state = ScanViewHandler.State.DONE;
+        scanManager.getCameraManager().stopPreview();
         Message quit = Message.obtain(decodeThread.getHandler(), R.id.quit);
         quit.sendToTarget();
         try {
@@ -141,15 +113,14 @@ public final class CaptureActivityHandler extends Handler {
     }
 
     private void restartPreviewAndDecode() {
-        if (state == State.SUCCESS) {
-            state = State.PREVIEW;
-            cameraManager.requestPreviewFrame(decodeThread.getHandler(), R.id.decode);
-            activity.drawViewfinder();
+        if (state == ScanViewHandler.State.SUCCESS) {
+            state = ScanViewHandler.State.PREVIEW;
+            scanManager.getCameraManager().requestPreviewFrame(decodeThread.getHandler(), R.id.decode);
+            scanManager.drawViewFinder();
         }
     }
 
     private enum State {
         PREVIEW, SUCCESS, DONE
     }
-
 }
