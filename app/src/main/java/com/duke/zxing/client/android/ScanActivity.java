@@ -7,6 +7,7 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.view.WindowManager;
 
 import com.duke.zxing.client.android.widget.OnScanCallback;
 import com.duke.zxing.client.android.widget.ScanView;
@@ -23,6 +24,10 @@ public class ScanActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        /**
+         * 使用时无比加上下面这行
+         */
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_scan);
         mScanView = (ScanView) findViewById(R.id.scan_view);
         mScanView.setOnScanCallback(new OnScanCallback() {
@@ -58,6 +63,7 @@ public class ScanActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        System.out.println("onResume " + (mScanView == null ? "ScanView is null" : "ScanView is normal"));
         if (mScanView == null) {
             mScanView = (ScanView) findViewById(R.id.scan_view);
             if (mScanView == null) {
@@ -80,6 +86,9 @@ public class ScanActivity extends Activity {
                 }
             });
         }
+        /**
+         * MIUI的权限拦截可能会导致黑屏
+         */
         mScanView.onResume();
     }
 
